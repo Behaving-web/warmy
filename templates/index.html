@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Warmy</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f5f5f7;
+      color: #1d1d1f;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    header {
+      background: #fff;
+      border-bottom: 1px solid #e0e0e0;
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      height: 52px;
+    }
+
+    header h1 { font-size: 18px; font-weight: 700; margin-right: 8px; }
+
+    nav { display: flex; gap: 2px; }
+    nav a {
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #6b7280;
+      text-decoration: none;
+    }
+    nav a:hover { background: #f3f4f6; color: #1d1d1f; }
+    nav a.active { background: #ede9fe; color: #4f46e5; }
+
+    .header-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+    header .tag {
+      background: #f0fdf4;
+      color: #16a34a;
+      border: 1px solid #bbf7d0;
+      border-radius: 20px;
+      padding: 2px 10px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    header .tag.paused { background: #fef9c3; color: #a16207; border-color: #fde68a; }
+    header .tag.not-started { background: #f3f4f6; color: #6b7280; border-color: #e5e7eb; }
+
+    main {
+      max-width: 960px;
+      margin: 32px auto;
+      padding: 0 24px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 12px;
+      padding: 20px;
+    }
+
+    .card h2 {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      color: #6b7280;
+      margin-bottom: 16px;
+    }
+
+    .span-2 { grid-column: span 2; }
+
+    /* Stats row */
+    .stats {
+      display: flex;
+      gap: 32px;
+    }
+    .stat-item { display: flex; flex-direction: column; gap: 2px; }
+    .stat-value { font-size: 32px; font-weight: 700; }
+    .stat-label { font-size: 12px; color: #6b7280; }
+
+    /* Progress bar */
+    .progress-wrap { margin-top: 16px; }
+    .progress-bar {
+      height: 8px;
+      background: #e5e7eb;
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: #16a34a;
+      border-radius: 99px;
+      transition: width .4s ease;
+    }
+    .progress-label {
+      font-size: 12px;
+      color: #6b7280;
+      margin-top: 6px;
+    }
+
+    /* Ramp table */
+    .ramp-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .ramp-table th {
+      text-align: left;
+      font-weight: 600;
+      color: #6b7280;
+      padding: 4px 8px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .ramp-table td { padding: 6px 8px; border-bottom: 1px solid #f3f4f6; }
+    .ramp-table tr.active td { background: #f0fdf4; font-weight: 600; }
+
+    /* Forms */
+    form { display: flex; flex-direction: column; gap: 10px; }
+    .field { display: flex; flex-direction: column; gap: 4px; }
+    label { font-size: 12px; font-weight: 500; color: #374151; }
+    input[type=text], input[type=email], input[type=password], input[type=number] {
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      padding: 7px 10px;
+      font-size: 13px;
+      width: 100%;
+      outline: none;
+      transition: border-color .15s;
+    }
+    input:focus { border-color: #6366f1; }
+    .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    select {
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      padding: 7px 10px;
+      font-size: 13px;
+      width: 100%;
+      background: #fff;
+    }
+
+    button, .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: opacity .15s;
+    }
+    button:hover, .btn:hover { opacity: .85; }
+
+    .btn-primary { background: #4f46e5; color: #fff; }
+    .btn-green  { background: #16a34a; color: #fff; }
+    .btn-red    { background: #dc2626; color: #fff; }
+    .btn-ghost  { background: transparent; color: #6b7280; border: 1px solid #d1d5db; }
+    .btn-sm     { padding: 4px 10px; font-size: 12px; }
+
+    /* Partners list */
+    .partner-list { display: flex; flex-direction: column; gap: 8px; }
+    .partner-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 10px;
+      background: #f9fafb;
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
+    }
+    .partner-email { font-size: 13px; }
+    .partner-email.inactive { color: #9ca3af; text-decoration: line-through; }
+    .partner-actions { display: flex; gap: 6px; }
+
+    /* Recent sends */
+    .send-list { display: flex; flex-direction: column; gap: 6px; }
+    .send-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      border-bottom: 1px solid #f3f4f6;
+      font-size: 12px;
+      gap: 10px;
+    }
+    .send-row:last-child { border-bottom: none; }
+    .send-to { color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+    .send-subject { flex: 1; }
+    .send-time { color: #9ca3af; white-space: nowrap; }
+
+    /* Add partner inline */
+    .inline-form {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .inline-form input { flex: 1; }
+
+    /* Send-now box */
+    .send-now-row { display: flex; gap: 8px; align-items: flex-end; margin-top: 8px; }
+    .send-now-row .field { flex: 1; }
+
+    #test-result { font-size: 12px; margin-top: 6px; }
+
+    .pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 99px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .pill-active { background: #dcfce7; color: #16a34a; }
+    .pill-inactive { background: #f3f4f6; color: #9ca3af; }
+
+    .empty { color: #9ca3af; font-size: 13px; text-align: center; padding: 20px 0; }
+
+    .actions-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🔥 Warmy</h1>
+  <nav>
+    <a href="/" class="active">Warm-up</a>
+    <a href="/sendy">Sendy</a>
+  </nav>
+  <div class="header-right">
+    {% if warm_day %}
+      <span class="tag">Day {{ warm_day }} — Active</span>
+    {% else %}
+      <span class="tag not-started">Not started</span>
+    {% endif %}
+  </div>
+</header>
+
+<main>
+
+  <!-- Stats -->
+  <div class="card span-2">
+    <h2>Overview</h2>
+    <div class="stats">
+      <div class="stat-item">
+        <span class="stat-value">{{ warm_day or 0 }}</span>
+        <span class="stat-label">Warm-up day</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value">{{ today_sent }}</span>
+        <span class="stat-label">Sent today</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value">{{ today_target }}</span>
+        <span class="stat-label">Target today</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value">{{ total_sent }}</span>
+        <span class="stat-label">Total sent</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value">{{ partners|length }}</span>
+        <span class="stat-label">Partners</span>
+      </div>
+    </div>
+
+    {% if warm_day and today_target > 0 %}
+    <div class="progress-wrap">
+      <div class="progress-bar">
+        <div class="progress-fill" style="width: {{ [((today_sent / today_target) * 100)|int, 100]|min }}%"></div>
+      </div>
+      <div class="progress-label">{{ today_sent }} / {{ today_target }} emails sent today</div>
+    </div>
+    {% endif %}
+
+    <div class="actions-row" style="margin-top: 16px;">
+      {% if not warm_day %}
+        <form action="/warm/start" method="post" style="flex-direction: row;">
+          <button type="submit" class="btn-green">Start warm-up</button>
+        </form>
+      {% else %}
+        <form action="/warm/send-now" method="post" id="send-now-form" style="flex-direction: row; align-items: center; gap: 8px;">
+          <input type="number" name="count" value="1" min="1" max="50" style="width: 60px;" />
+          <button type="submit" class="btn-primary">Send now</button>
+        </form>
+        <form action="/warm/reset" method="post" style="flex-direction: row;" onsubmit="return confirm('Reset will clear all warm-up history. Continue?')">
+          <button type="submit" class="btn-ghost">Reset</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Seed email -->
+  <div class="card">
+    <h2>Seed email</h2>
+    <form action="/seed" method="post">
+      <div class="field">
+        <label>Your name</label>
+        <input type="text" name="name" value="{{ seed.name if seed else '' }}" placeholder="Jane Smith" required />
+      </div>
+      <div class="field">
+        <label>Email address</label>
+        <input type="email" name="email" value="{{ seed.email if seed else '' }}" placeholder="jane@yourdomain.com" required />
+      </div>
+      <div class="row-2">
+        <div class="field">
+          <label>SMTP host</label>
+          <input type="text" name="smtp_host" value="{{ seed.smtp_host if seed else '' }}" placeholder="smtp.gmail.com" required />
+        </div>
+        <div class="field">
+          <label>Port</label>
+          <input type="number" name="smtp_port" value="{{ seed.smtp_port if seed else 587 }}" required />
+        </div>
+      </div>
+      <div class="field">
+        <label>SMTP username</label>
+        <input type="text" name="smtp_user" value="{{ seed.smtp_user if seed else '' }}" placeholder="jane@yourdomain.com" required />
+      </div>
+      <div class="field">
+        <label>SMTP password / app password</label>
+        <div style="position: relative;">
+          <input type="password" id="smtp_pass" name="smtp_pass" value="{{ seed.smtp_pass if seed else '' }}" placeholder="••••••••••••" required style="padding-right: 38px;" />
+          <button type="button" onclick="togglePassword()" title="Show / hide password"
+            style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+                   background: none; border: none; cursor: pointer; padding: 0; color: #6b7280; line-height: 1;">
+            <svg id="eye-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Security</label>
+        <select name="use_tls">
+          <option value="1" {% if not seed or seed.use_tls %}selected{% endif %}>STARTTLS (port 587)</option>
+          <option value="0" {% if seed and not seed.use_tls %}selected{% endif %}>SSL (port 465)</option>
+        </select>
+      </div>
+      <div class="row-2">
+        <div class="field">
+          <label>IMAP host <span style="color:#9ca3af;font-weight:400">(for Sendy)</span></label>
+          <input type="text" name="imap_host" value="{{ seed.imap_host if seed else '' }}" placeholder="imap.zoho.com.au" />
+        </div>
+        <div class="field">
+          <label>IMAP port</label>
+          <input type="number" name="imap_port" value="{{ seed.imap_port if seed else 993 }}" />
+        </div>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <button type="submit" class="btn-primary">Save</button>
+        <button type="button" class="btn-ghost" onclick="testConnection()">Test connection</button>
+      </div>
+      <div id="test-result"></div>
+    </form>
+  </div>
+
+  <!-- Tracking URL -->
+  <div class="card" style="grid-column: 2;">
+    <h2>Open tracking</h2>
+    <form action="/settings" method="post">
+      <div class="field">
+        <label>Tracking base URL</label>
+        <input type="text" name="tracking_base_url"
+          value="{{ settings.tracking_base_url if settings else '' }}"
+          placeholder="https://track.yourdomain.com" />
+      </div>
+      <p style="font-size:12px;color:#6b7280;margin-top:-4px">
+        Public URL where Warmy is reachable. Used to embed open-tracking pixels in Sendy emails.<br>
+        Leave blank to disable open tracking.
+      </p>
+      <button type="submit" class="btn-primary" style="margin-top:4px">Save</button>
+    </form>
+  </div>
+
+  <!-- Ramp schedule -->
+  <div class="card">
+    <h2>Ramp schedule</h2>
+    <table class="ramp-table">
+      <thead>
+        <tr>
+          <th>Days</th>
+          <th>Emails / day</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for start, end, count in ramp %}
+        {% set is_active = warm_day and warm_day >= start and warm_day <= end %}
+        <tr class="{{ 'active' if is_active else '' }}">
+          <td>{{ start }}{% if end < 999 %}–{{ end }}{% else %}+{% endif %}</td>
+          <td>{{ count }}</td>
+          <td>
+            {% if is_active %}
+              <span class="pill pill-active">Current</span>
+            {% elif warm_day and warm_day > end %}
+              <span class="pill pill-active">Done</span>
+            {% else %}
+              <span class="pill pill-inactive">Upcoming</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Partners -->
+  <div class="card span-2">
+    <h2>Partner emails ({{ partners|selectattr('active', 'equalto', 1)|list|length }} active)</h2>
+
+    {% if partners %}
+    <div class="partner-list">
+      {% for p in partners %}
+      <div class="partner-row">
+        <span class="partner-email {{ '' if p.active else 'inactive' }}">{{ p.email }}</span>
+        <div class="partner-actions">
+          <form action="/partners/{{ p.id }}/toggle" method="post" style="flex-direction: row;">
+            <button type="submit" class="btn btn-ghost btn-sm">{{ 'Pause' if p.active else 'Resume' }}</button>
+          </form>
+          <form action="/partners/{{ p.id }}/delete" method="post" style="flex-direction: row;" onsubmit="return confirm('Remove {{ p.email }}?')">
+            <button type="submit" class="btn btn-red btn-sm">Remove</button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty">No partner emails yet — add some below.</div>
+    {% endif %}
+
+    <form action="/partners" method="post" class="inline-form">
+      <input type="email" name="email" placeholder="partner@gmail.com" required />
+      <button type="submit" class="btn btn-primary btn-sm">Add</button>
+    </form>
+  </div>
+
+  <!-- Recent sends -->
+  <div class="card span-2">
+    <h2>Recent sends</h2>
+    {% if recent %}
+    <div class="send-list">
+      {% for row in recent %}
+      <div class="send-row">
+        <span class="send-to">→ {{ row.to_email }}</span>
+        <span class="send-subject">{{ row.subject }}</span>
+        <span class="send-time">{{ row.sent_at[:16].replace('T', ' ') }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty">No emails sent yet.</div>
+    {% endif %}
+  </div>
+
+</main>
+
+<script>
+  function togglePassword() {
+    const input = document.getElementById('smtp_pass');
+    const icon = document.getElementById('eye-icon');
+    if (input.type === 'password') {
+      input.type = 'text';
+      icon.innerHTML = `
+        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+        <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+        <line x1="1" y1="1" x2="23" y2="23"/>`;
+    } else {
+      input.type = 'password';
+      icon.innerHTML = `
+        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+        <circle cx="12" cy="12" r="3"/>`;
+    }
+  }
+
+  async function testConnection() {
+    const el = document.getElementById('test-result');
+    el.textContent = 'Testing…';
+    el.style.color = '#6b7280';
+    try {
+      const res = await fetch('/seed/test', { method: 'POST' });
+      const data = await res.json();
+      if (data.ok) {
+        el.textContent = '✓ Connection successful';
+        el.style.color = '#16a34a';
+      } else {
+        el.textContent = '✗ ' + (data.error || 'Connection failed');
+        el.style.color = '#dc2626';
+      }
+    } catch (e) {
+      el.textContent = '✗ Error: ' + e.message;
+      el.style.color = '#dc2626';
+    }
+  }
+
+  // Send-now form via fetch so we get the result inline
+  document.getElementById('send-now-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const btn = form.querySelector('button');
+    btn.textContent = 'Sending…';
+    btn.disabled = true;
+    const res = await fetch('/warm/send-now', { method: 'POST', body: new FormData(form) });
+    const data = await res.json();
+    btn.textContent = 'Send now';
+    btn.disabled = false;
+    if (data.sent > 0) {
+      alert(`Sent ${data.sent} email${data.sent !== 1 ? 's' : ''}.`);
+      location.reload();
+    } else {
+      alert(data.error || data.errors?.join('\n') || 'Failed to send.');
+    }
+  });
+</script>
+
+</body>
+</html>

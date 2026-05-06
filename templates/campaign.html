@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ campaign.name }} — Warmy</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f5f5f7; color: #1d1d1f; font-size: 14px; line-height: 1.5; }
+
+    header { background: #fff; border-bottom: 1px solid #e0e0e0; padding: 0 32px; display: flex; align-items: center; gap: 20px; height: 52px; }
+    header h1 { font-size: 18px; font-weight: 700; margin-right: 8px; }
+    nav { display: flex; gap: 2px; }
+    nav a { padding: 6px 14px; border-radius: 6px; font-size: 13px; font-weight: 500; color: #6b7280; text-decoration: none; }
+    nav a:hover { background: #f3f4f6; }
+    nav a.active { background: #ede9fe; color: #4f46e5; }
+
+    main { max-width: 1000px; margin: 28px auto; padding: 0 24px; display: flex; flex-direction: column; gap: 20px; }
+
+    .page-header {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    }
+    .back { color: #6b7280; text-decoration: none; font-size: 13px; }
+    .back:hover { color: #1d1d1f; }
+    .page-title { font-size: 20px; font-weight: 700; flex: 1; }
+
+    .status-badge {
+      display: inline-block; padding: 3px 10px; border-radius: 99px;
+      font-size: 12px; font-weight: 600; text-transform: capitalize;
+    }
+    .s-draft   { background:#f3f4f6; color:#6b7280; }
+    .s-active  { background:#dcfce7; color:#16a34a; }
+    .s-paused  { background:#fef9c3; color:#a16207; }
+
+    .actions { display: flex; gap: 8px; }
+    button, .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 7px 14px; border-radius: 6px; font-size: 13px; font-weight: 500;
+      cursor: pointer; border: none; transition: opacity .15s;
+    }
+    button:hover { opacity: .85; }
+    .btn-primary { background: #4f46e5; color: #fff; }
+    .btn-green   { background: #16a34a; color: #fff; }
+    .btn-yellow  { background: #d97706; color: #fff; }
+    .btn-red     { background: #dc2626; color: #fff; }
+    .btn-ghost   { background: transparent; color: #6b7280; border: 1px solid #d1d5db; }
+    .btn-sm      { padding: 4px 10px; font-size: 12px; }
+
+    /* Stats row */
+    .stats-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 12px; }
+    .stat-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 14px; text-align: center; }
+    .stat-val  { font-size: 26px; font-weight: 700; }
+    .stat-lbl  { font-size: 11px; color: #6b7280; margin-top: 2px; }
+
+    /* Two column layout */
+    .two-col { display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start; }
+
+    .card { background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; padding: 20px; }
+    .card-title { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: #6b7280; margin-bottom: 14px; }
+
+    form { display: flex; flex-direction: column; gap: 10px; }
+    .field { display: flex; flex-direction: column; gap: 4px; }
+    label { font-size: 12px; font-weight: 500; color: #374151; }
+    input[type=text], input[type=number] {
+      border: 1px solid #d1d5db; border-radius: 6px; padding: 7px 10px;
+      font-size: 13px; width: 100%; outline: none;
+    }
+    input:focus, textarea:focus { border-color: #6366f1; outline: none; }
+    textarea {
+      border: 1px solid #d1d5db; border-radius: 6px; padding: 8px 10px;
+      font-size: 13px; width: 100%; resize: vertical; font-family: inherit;
+    }
+
+    /* Steps */
+    .step-list { display: flex; flex-direction: column; gap: 10px; }
+    .step-item { border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
+    .step-header {
+      display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+      background: #f9fafb; cursor: pointer;
+    }
+    .step-num {
+      width: 24px; height: 24px; border-radius: 50%; background: #4f46e5; color: #fff;
+      font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .step-info { flex: 1; min-width: 0; }
+    .step-subject { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .step-delay { font-size: 11px; color: #6b7280; }
+    .step-body-preview { display: none; padding: 12px; border-top: 1px solid #e5e7eb; }
+    .step-body-preview.open { display: block; }
+    .step-edit-form { display: none; padding: 14px; border-top: 1px solid #e5e7eb; }
+    .step-edit-form.open { display: flex; flex-direction: column; gap: 10px; }
+    .step-actions { display: flex; gap: 6px; }
+
+    /* Leads */
+    .leads-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+    .filter-btn { padding: 4px 10px; border-radius: 99px; font-size: 12px; font-weight: 500; border: 1px solid #e5e7eb; background: #fff; cursor: pointer; color: #6b7280; }
+    .filter-btn.active { background: #4f46e5; color: #fff; border-color: #4f46e5; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead th { text-align: left; font-weight: 600; color: #6b7280; padding: 6px 10px; border-bottom: 1px solid #e5e7eb; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+    tbody td { padding: 8px 10px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: #fafafa; }
+
+    .lead-status {
+      display: inline-block; padding: 2px 8px; border-radius: 99px;
+      font-size: 11px; font-weight: 600; text-transform: capitalize;
+    }
+    .ls-pending     { background:#f3f4f6; color:#6b7280; }
+    .ls-active      { background:#dbeafe; color:#1d4ed8; }
+    .ls-replied     { background:#dcfce7; color:#16a34a; }
+    .ls-unsubscribed{ background:#fee2e2; color:#dc2626; }
+    .ls-completed   { background:#ede9fe; color:#4f46e5; }
+    .ls-bounced     { background:#ffedd5; color:#c2410c; }
+
+    .empty { color: #9ca3af; font-size: 13px; text-align: center; padding: 32px 0; }
+
+    .hint { font-size: 12px; color: #9ca3af; font-style: italic; }
+
+    .flash { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #16a34a; }
+
+    .upload-btn-wrap { position: relative; overflow: hidden; display: inline-flex; }
+    .upload-btn-wrap input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; font-size: 0; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🔥 Warmy</h1>
+  <nav>
+    <a href="/">Warm-up</a>
+    <a href="/sendy" class="active">Sendy</a>
+  </nav>
+</header>
+
+<main>
+
+  <!-- Page header -->
+  <div class="page-header">
+    <a href="/sendy" class="back">← Campaigns</a>
+    <span class="page-title">{{ campaign.name }}</span>
+    <span class="status-badge s-{{ campaign.status }}">{{ campaign.status }}</span>
+    <div class="actions">
+      {% if campaign.status != 'active' %}
+      <form action="/sendy/campaigns/{{ campaign.id }}/start" method="post" style="flex-direction:row">
+        <button type="submit" class="btn-green">▶ Start</button>
+      </form>
+      {% endif %}
+      {% if campaign.status == 'active' %}
+      <form action="/sendy/campaigns/{{ campaign.id }}/pause" method="post" style="flex-direction:row">
+        <button type="submit" class="btn-yellow">⏸ Pause</button>
+      </form>
+      {% endif %}
+      <form action="/sendy/campaigns/{{ campaign.id }}/delete" method="post" style="flex-direction:row"
+            onsubmit="return confirm('Delete campaign and all leads?')">
+        <button type="submit" class="btn-ghost btn-sm">Delete</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Flash message -->
+  {% if request.query_params.get('imported') %}
+  <div class="flash">
+    ✓ Imported {{ request.query_params.get('imported') }} leads
+    {% if request.query_params.get('skipped')|int > 0 %}
+      ({{ request.query_params.get('skipped') }} skipped — duplicates or missing email)
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-val">{{ stats.total or 0 }}</div><div class="stat-lbl">Total</div></div>
+    <div class="stat-card"><div class="stat-val">{{ sent_total }}</div><div class="stat-lbl">Sent</div></div>
+    <div class="stat-card"><div class="stat-val">{{ opens }}</div><div class="stat-lbl">Opened</div></div>
+    <div class="stat-card"><div class="stat-val">{{ stats.replied or 0 }}</div><div class="stat-lbl">Replied</div></div>
+    <div class="stat-card"><div class="stat-val">{{ stats.unsubscribed or 0 }}</div><div class="stat-lbl">Unsub</div></div>
+    <div class="stat-card"><div class="stat-val">{{ stats.bounced or 0 }}</div><div class="stat-lbl">Bounced</div></div>
+    <div class="stat-card"><div class="stat-val">{{ stats.completed or 0 }}</div><div class="stat-lbl">Done</div></div>
+  </div>
+
+  <!-- Steps + Add step -->
+  <div class="two-col">
+
+    <div class="card">
+      <div class="card-title">Email sequence</div>
+
+      {% if steps %}
+      <div class="step-list" id="step-list">
+        {% for step in steps %}
+        <div class="step-item">
+          <div class="step-header" onclick="toggleStep({{ step.id }})">
+            <div class="step-num">{{ step.step_number }}</div>
+            <div class="step-info">
+              <div class="step-subject">{{ step.subject or '(no subject)' }}</div>
+              <div class="step-delay">
+                {% if step.step_number == 1 %}Send immediately{% else %}+{{ step.delay_days }} day{{ 's' if step.delay_days != 1 else '' }} after previous{% endif %}
+              </div>
+            </div>
+            <div class="step-actions" onclick="event.stopPropagation()">
+              <button type="button" class="btn btn-ghost btn-sm" onclick="toggleEdit({{ step.id }})">Edit</button>
+              <form action="/sendy/campaigns/{{ campaign.id }}/steps/{{ step.id }}/delete" method="post" style="flex-direction:row"
+                    onsubmit="return confirm('Remove this step?')">
+                <button type="submit" class="btn btn-red btn-sm">✕</button>
+              </form>
+            </div>
+          </div>
+
+          <div class="step-body-preview" id="preview-{{ step.id }}">
+            <pre style="font-family:inherit;font-size:12px;white-space:pre-wrap;color:#374151">{{ step.body }}</pre>
+          </div>
+
+          <div class="step-edit-form" id="edit-{{ step.id }}">
+            <form action="/sendy/campaigns/{{ campaign.id }}/steps/{{ step.id }}/update" method="post">
+              {% if step.step_number > 1 %}
+              <div class="field">
+                <label>Delay (days after previous step)</label>
+                <input type="number" name="delay_days" value="{{ step.delay_days }}" min="1" max="30" />
+              </div>
+              {% endif %}
+              <div class="field">
+                <label>Subject</label>
+                <input type="text" name="subject" value="{{ step.subject }}" required />
+              </div>
+              <div class="field">
+                <label>Body</label>
+                <textarea name="body" rows="6" required>{{ step.body }}</textarea>
+              </div>
+              <div style="display:flex;gap:8px">
+                <button type="submit" class="btn-primary btn-sm">Save</button>
+                <button type="button" class="btn-ghost btn-sm" onclick="toggleEdit({{ step.id }})">Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="empty">No steps yet — add your first email below.</div>
+      {% endif %}
+
+      <!-- Add step form -->
+      <div style="margin-top:16px;border-top:1px solid #f3f4f6;padding-top:16px">
+        <div class="card-title">Add step {{ steps|length + 1 }}</div>
+        <form action="/sendy/campaigns/{{ campaign.id }}/steps" method="post">
+          {% if steps %}
+          <div class="field">
+            <label>Delay (days after previous step)</label>
+            <input type="number" name="delay_days" value="3" min="1" max="30" />
+          </div>
+          {% else %}
+          <input type="hidden" name="delay_days" value="0" />
+          {% endif %}
+          <div class="field">
+            <label>Subject</label>
+            <input type="text" name="subject" placeholder="Quick question for you" required />
+          </div>
+          <div class="field">
+            <label>Body <span class="hint">— use {{first_name}}, {{company}}, {{last_name}}</span></label>
+            <textarea name="body" rows="7"
+              placeholder="Hi {{first_name}},&#10;&#10;...&#10;&#10;Best,&#10;Michael" required></textarea>
+          </div>
+          <button type="submit" class="btn-primary">Add step</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Leads panel -->
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div class="card-title" style="margin-bottom:0">Leads ({{ stats.total or 0 }})</div>
+        <div class="upload-btn-wrap">
+          <button class="btn btn-primary btn-sm">⬆ Upload CSV</button>
+          <form id="csv-form" action="/sendy/campaigns/{{ campaign.id }}/leads/upload" method="post" enctype="multipart/form-data">
+            <input type="file" name="file" accept=".csv" onchange="document.getElementById('csv-form').submit()" />
+          </form>
+        </div>
+      </div>
+
+      <p style="font-size:12px;color:#9ca3af;margin-bottom:12px">
+        CSV must include an <strong>email</strong> column. Optional: first_name, last_name, company.
+      </p>
+
+      <!-- Filter tabs -->
+      <div class="leads-toolbar">
+        <button class="filter-btn active" onclick="filterLeads('all', this)">All</button>
+        <button class="filter-btn" onclick="filterLeads('pending', this)">Pending</button>
+        <button class="filter-btn" onclick="filterLeads('active', this)">Active</button>
+        <button class="filter-btn" onclick="filterLeads('replied', this)">Replied</button>
+        <button class="filter-btn" onclick="filterLeads('unsubscribed', this)">Unsub</button>
+        <button class="filter-btn" onclick="filterLeads('bounced', this)">Bounced</button>
+        <button class="filter-btn" onclick="filterLeads('completed', this)">Done</button>
+      </div>
+
+      {% if leads %}
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>Name</th>
+              <th>Company</th>
+              <th>Status</th>
+              <th>Step</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="leads-table">
+            {% for lead in leads %}
+            <tr data-status="{{ lead.status }}">
+              <td>{{ lead.email }}</td>
+              <td>{{ lead.first_name }} {{ lead.last_name }}</td>
+              <td>{{ lead.company }}</td>
+              <td><span class="lead-status ls-{{ lead.status }}">{{ lead.status }}</span></td>
+              <td>{{ lead.current_step }}/{{ steps|length }}</td>
+              <td>
+                <form action="/sendy/campaigns/{{ campaign.id }}/leads/{{ lead.id }}/delete" method="post" style="flex-direction:row"
+                      onsubmit="return confirm('Remove {{ lead.email }}?')">
+                  <button type="submit" class="btn btn-ghost btn-sm">✕</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if stats.total > 200 %}
+      <p style="font-size:12px;color:#9ca3af;margin-top:10px;text-align:center">Showing first 200 leads.</p>
+      {% endif %}
+      {% else %}
+      <div class="empty">No leads yet — upload a CSV to get started.</div>
+      {% endif %}
+    </div>
+
+  </div>
+</main>
+
+<script>
+  function toggleStep(id) {
+    const el = document.getElementById(`preview-${id}`);
+    el.classList.toggle('open');
+  }
+  function toggleEdit(id) {
+    const preview = document.getElementById(`preview-${id}`);
+    const edit = document.getElementById(`edit-${id}`);
+    preview.classList.remove('open');
+    edit.classList.toggle('open');
+  }
+  function filterLeads(status, btn) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('#leads-table tr').forEach(row => {
+      row.style.display = (status === 'all' || row.dataset.status === status) ? '' : 'none';
+    });
+  }
+</script>
+
+</body>
+</html>

@@ -312,22 +312,22 @@
         <label>Email address</label>
         <input type="email" name="email" value="{{ seed.email if seed else '' }}" placeholder="jane@yourdomain.com" required />
       </div>
-      <div class="row-2">
-        <div class="field">
-          <label>SMTP host</label>
-          <input type="text" name="smtp_host" value="{{ seed.smtp_host if seed else '' }}" placeholder="smtp.gmail.com" required />
-        </div>
-        <div class="field">
-          <label>Port</label>
-          <input type="number" name="smtp_port" value="{{ seed.smtp_port if seed else 587 }}" required />
-        </div>
+      <p style="font-size:12px;color:#6b7280;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:8px 10px;">
+        ✉️ Sending is handled by <strong>Resend</strong> (set via <code>RESEND_API_KEY</code> env var).<br>
+        The fields below are only used for <strong>reply monitoring</strong> via IMAP.
+      </p>
+
+      <!-- Hidden fields to keep DB happy — not used for sending -->
+      <input type="hidden" name="smtp_host" value="{{ seed.smtp_host if seed else 'unused' }}" />
+      <input type="hidden" name="smtp_port" value="{{ seed.smtp_port if seed else 465 }}" />
+      <input type="hidden" name="use_tls" value="{{ seed.use_tls if seed else 0 }}" />
+
+      <div class="field">
+        <label>Zoho username <span style="color:#9ca3af;font-weight:400">(for IMAP reply monitoring)</span></label>
+        <input type="text" name="smtp_user" value="{{ seed.smtp_user if seed else '' }}" placeholder="michael@yourdomain.com" required />
       </div>
       <div class="field">
-        <label>SMTP username</label>
-        <input type="text" name="smtp_user" value="{{ seed.smtp_user if seed else '' }}" placeholder="jane@yourdomain.com" required />
-      </div>
-      <div class="field">
-        <label>SMTP password / app password</label>
+        <label>Zoho app password</label>
         <div style="position: relative;">
           <input type="password" id="smtp_pass" name="smtp_pass" value="{{ seed.smtp_pass if seed else '' }}" placeholder="••••••••••••" required style="padding-right: 38px;" />
           <button type="button" onclick="togglePassword()" title="Show / hide password"
@@ -341,16 +341,9 @@
           </button>
         </div>
       </div>
-      <div class="field">
-        <label>Security</label>
-        <select name="use_tls">
-          <option value="1" {% if not seed or seed.use_tls %}selected{% endif %}>STARTTLS (port 587)</option>
-          <option value="0" {% if seed and not seed.use_tls %}selected{% endif %}>SSL (port 465)</option>
-        </select>
-      </div>
       <div class="row-2">
         <div class="field">
-          <label>IMAP host <span style="color:#9ca3af;font-weight:400">(for Sendy)</span></label>
+          <label>IMAP host</label>
           <input type="text" name="imap_host" value="{{ seed.imap_host if seed else '' }}" placeholder="imap.zoho.com.au" />
         </div>
         <div class="field">

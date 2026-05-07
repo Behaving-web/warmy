@@ -2,9 +2,12 @@ import random
 import logging
 import datetime
 from datetime import timezone
+from zoneinfo import ZoneInfo
 from apscheduler.schedulers.background import BackgroundScheduler
 from database import db
 from mailer import send_warm_email
+
+SYDNEY = ZoneInfo("Australia/Sydney")
 
 logger = logging.getLogger(__name__)
 
@@ -246,9 +249,9 @@ scheduler = BackgroundScheduler()
 
 
 def start_scheduler():
-    scheduler.add_job(run_warm_job,  "cron", hour=9,       minute=0,    id="warm_job",  replace_existing=True)
-    scheduler.add_job(run_sendy_job, "cron", hour="8-17",  minute="*/30", id="sendy_job", replace_existing=True)
-    scheduler.add_job(run_imap_job,  "cron", hour="7-19",  minute="*/30", id="imap_job",  replace_existing=True)
+    scheduler.add_job(run_warm_job,  "cron", hour=9,       minute=0,      timezone=SYDNEY, id="warm_job",  replace_existing=True)
+    scheduler.add_job(run_sendy_job, "cron", hour="8-17",  minute="*/30", timezone=SYDNEY, id="sendy_job", replace_existing=True)
+    scheduler.add_job(run_imap_job,  "cron", hour="7-19",  minute="*/30", timezone=SYDNEY, id="imap_job",  replace_existing=True)
     scheduler.start()
     logger.info("Scheduler started (warm + sendy + imap).")
 

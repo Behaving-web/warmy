@@ -1,7 +1,12 @@
-import smtplib
+import os
 import random
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import smtplib
+import logging
+import resend
+
+logger = logging.getLogger(__name__)
+
+resend.api_key = os.environ.get("RESEND_API_KEY", "")
 
 SUBJECTS = [
     "Quick question for you",
@@ -133,42 +138,35 @@ def send_warm_email(seed: dict, to_email: str) -> str:
     subject = random.choice(SUBJECTS)
     body = random.choice(BODIES).format(name=seed["name"].split()[0])
 
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"] = f"{seed['name']} <{seed['email']}>"
-    msg["To"] = to_email
-    msg.attach(MIMEText(body, "plain"))
-
-    if seed["use_tls"]:
-        with smtplib.SMTP(seed["smtp_host"], seed["smtp_port"]) as server:
-            server.ehlo()
-            server.starttls()
-            server.login(seed["smtp_user"], seed["smtp_pass"])
-            server.sendmail(seed["email"], to_email, msg.as_string())
-    else:
-        with smtplib.SMTP_SSL(seed["smtp_host"], seed["smtp_port"]) as server:
-            server.login(seed["smtp_user"], seed["smtp_pass"])
-            server.sendmail(seed["email"], to_email, msg.as_string())
+    resend.Emails.send({
+        "from": f"{seed['name']} <{seed['email']}>",
+        "to": [to_email],
+        "subject": subject,
+        "text": body,
+    })
 
     return subject
 
 
 def test_connection(seed: dict) -> dict:
+    """Test IMAP connectivity (used for reply monitoring)."""
+    if not seed.get("imap_host"):
+        return {"ok": False, "error": "No IMAP host set — add imap.zoho.com.au to enable reply monitoring."}
     try:
-        if seed["use_tls"]:
-            with smtplib.SMTP(seed["smtp_host"], seed["smtp_port"], timeout=10) as server:
-                server.ehlo()
-                server.starttls()
-                server.login(seed["smtp_user"], seed["smtp_pass"])
-        else:
-            with smtplib.SMTP_SSL(seed["smtp_host"], seed["smtp_port"], timeout=10) as server:
-                server.login(seed["smtp_user"], seed["smtp_pass"])
+        with smtplib.SMTP_SSL(seed["imap_host"].replace("imap.", "smtp."), 465, timeout=10) as s:
+            pass
+    except Exception:
+        pass  # IMAP test below is the real check
+
+    import imaplib
+    try:
+        mail = imaplib.IMAP4_SSL(seed["imap_host"], int(seed.get("imap_port") or 993), timeout=10)
+        mail.login(seed["smtp_user"], seed["smtp_pass"])
+        mail.logout()
         return {"ok": True}
-    except smtplib.SMTPAuthenticationError as e:
-        return {"ok": False, "error": f"Authentication failed — wrong username or password. (SMTP {e.smtp_code}: {e.smtp_error.decode()})"}
-    except smtplib.SMTPConnectError as e:
-        return {"ok": False, "error": f"Could not connect to {seed['smtp_host']}:{seed['smtp_port']} — {e}"}
-    except TimeoutError:
-        return {"ok": False, "error": f"Connection timed out — check the host and port are correct."}
+    except imaplib.IMAP4.error as e:
+        return {"ok": False, "error": f"IMAP auth failed — check your app password. ({e})"}
+    except OSError as e:
+        return {"ok": False, "error": f"Could not connect to {seed['imap_host']}:993 — {e}"}
     except Exception as e:
         return {"ok": False, "error": f"{type(e).__name__}: {e}"}

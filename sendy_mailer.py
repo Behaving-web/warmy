@@ -1,16 +1,16 @@
-import smtplib
+import os
 import secrets
 import json
 import logging
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import resend
 from database import db
 
 logger = logging.getLogger(__name__)
 
+resend.api_key = os.environ.get("RESEND_API_KEY", "")
+
 
 def personalize(text: str, lead: dict) -> str:
-    """Replace {{variable}} placeholders with lead data."""
     replacements = {
         "first_name": lead.get("first_name") or "",
         "last_name": lead.get("last_name") or "",
@@ -29,47 +29,29 @@ def personalize(text: str, lead: dict) -> str:
     return text
 
 
-def _smtp_send(seed: dict, to_email: str, msg):
-    if seed["use_tls"]:
-        with smtplib.SMTP(seed["smtp_host"], seed["smtp_port"]) as server:
-            server.ehlo()
-            server.starttls()
-            server.login(seed["smtp_user"], seed["smtp_pass"])
-            server.sendmail(seed["email"], to_email, msg.as_string())
-    else:
-        with smtplib.SMTP_SSL(seed["smtp_host"], seed["smtp_port"]) as server:
-            server.login(seed["smtp_user"], seed["smtp_pass"])
-            server.sendmail(seed["email"], to_email, msg.as_string())
-
-
 def send_campaign_email(seed: dict, lead: dict, step: dict, tracking_base_url: str = None) -> str:
-    """
-    Send a personalised campaign email to a lead.
-    Returns the tracking token (empty string if tracking not enabled).
-    """
     token = secrets.token_urlsafe(20) if tracking_base_url else ""
 
     subject = personalize(step["subject"], lead)
     plain_body = personalize(step["body"], lead)
 
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"] = f"{seed['name']} <{seed['email']}>"
-    msg["To"] = lead["email"]
-
-    msg.attach(MIMEText(plain_body, "plain"))
+    params = {
+        "from": f"{seed['name']} <{seed['email']}>",
+        "to": [lead["email"]],
+        "subject": subject,
+        "text": plain_body,
+    }
 
     if tracking_base_url and token:
         pixel_url = f"{tracking_base_url.rstrip('/')}/t/{token}"
         html_body = plain_body.replace("\n", "<br>")
-        html = (
+        params["html"] = (
             f"<html><body>{html_body}"
             f'<img src="{pixel_url}" width="1" height="1" style="display:none;border:0;" />'
             f"</body></html>"
         )
-        msg.attach(MIMEText(html, "html"))
 
-    _smtp_send(seed, lead["email"], msg)
+    resend.Emails.send(params)
 
     if token:
         with db() as conn:

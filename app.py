@@ -2,10 +2,11 @@ import csv
 import io
 import json
 import logging
+import os
 import secrets
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request, Form, HTTPException, UploadFile, File
+from fastapi import FastAPI, Request, Form, HTTPException, UploadFile, File, Cookie
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 
@@ -18,6 +19,17 @@ from mailer import test_connection
 
 logging.basicConfig(level=logging.INFO)
 templates = Jinja2Templates(directory="templates")
+
+# ── Auth ──────────────────────────────────────────────────────────────────────
+WARMY_PASSWORD = os.environ.get("WARMY_PASSWORD", "changeme")
+_sessions: set[str] = set()
+
+def _check_auth(session: str | None) -> bool:
+    return bool(session and session in _sessions)
+
+def _auth_required(request: Request, session: str | None = Cookie(default=None)):
+    if not _check_auth(session):
+        raise HTTPException(status_code=307, headers={"Location": "/login"})
 
 # 1×1 transparent GIF
 PIXEL_GIF = (
@@ -46,6 +58,52 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Warmy", lifespan=lifespan)
 
 
+# ── Login ─────────────────────────────────────────────────────────────────────
+
+LOGIN_HTML = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Warmy — Login</title>
+<style>
+*{{box-sizing:border-box;margin:0;padding:0}}
+body{{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f5f5f7;display:flex;align-items:center;justify-content:center;min-height:100vh}}
+.card{{background:#fff;border:1px solid #e0e0e0;border-radius:14px;padding:36px;width:340px;display:flex;flex-direction:column;gap:16px}}
+h1{{font-size:20px;font-weight:700}}
+label{{font-size:12px;font-weight:500;color:#374151;display:flex;flex-direction:column;gap:4px}}
+input{{border:1px solid #d1d5db;border-radius:6px;padding:8px 10px;font-size:13px;width:100%;outline:none}}
+input:focus{{border-color:#6366f1}}
+button{{background:#4f46e5;color:#fff;border:none;border-radius:6px;padding:9px;font-size:13px;font-weight:600;cursor:pointer}}
+.err{{color:#dc2626;font-size:12px}}
+</style></head>
+<body><div class="card">
+<h1>🔥 Warmy</h1>
+{error}
+<form method="post" action="/login" style="display:flex;flex-direction:column;gap:12px">
+<label>Password<input type="password" name="password" autofocus required /></label>
+<button type="submit">Sign in</button>
+</form></div></body></html>"""
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page():
+    return LOGIN_HTML.format(error="")
+
+@app.post("/login")
+async def login(password: str = Form(...)):
+    if secrets.compare_digest(password, WARMY_PASSWORD):
+        token = secrets.token_urlsafe(32)
+        _sessions.add(token)
+        resp = RedirectResponse("/", status_code=303)
+        resp.set_cookie("session", token, httponly=True, samesite="lax", max_age=60*60*24*30)
+        return resp
+    return HTMLResponse(LOGIN_HTML.format(error='<p class="err">Incorrect password.</p>'), status_code=401)
+
+@app.post("/logout")
+async def logout(session: str | None = Cookie(default=None)):
+    if session:
+        _sessions.discard(session)
+    resp = RedirectResponse("/login", status_code=303)
+    resp.delete_cookie("session")
+    return resp
+
+
 # ── Tracking pixel ────────────────────────────────────────────────────────────
 
 @app.get("/t/{token}")
@@ -70,7 +128,9 @@ async def tracking_pixel(token: str):
 # ── Warm-up dashboard ─────────────────────────────────────────────────────────
 
 @app.get("/", response_class=HTMLResponse)
-async def dashboard(request: Request):
+async def dashboard(request: Request, session: str | None = Cookie(default=None)):
+    if not _check_auth(session):
+        return RedirectResponse("/login", status_code=303)
     with db() as conn:
         seed = conn.execute("SELECT * FROM seed_email LIMIT 1").fetchone()
         partners = conn.execute("SELECT * FROM partners ORDER BY created_at DESC").fetchall()
@@ -177,7 +237,9 @@ async def warm_send_now(count: int = Form(1)):
 # ── Sendy ─────────────────────────────────────────────────────────────────────
 
 @app.get("/sendy", response_class=HTMLResponse)
-async def sendy_index(request: Request):
+async def sendy_index(request: Request, session: str | None = Cookie(default=None)):
+    if not _check_auth(session):
+        return RedirectResponse("/login", status_code=303)
     with db() as conn:
         campaigns = conn.execute("SELECT * FROM campaigns ORDER BY created_at DESC").fetchall()
         stats = {}
@@ -216,7 +278,9 @@ async def create_campaign(
 
 
 @app.get("/sendy/campaigns/{cid}", response_class=HTMLResponse)
-async def campaign_detail(request: Request, cid: int):
+async def campaign_detail(request: Request, cid: int, session: str | None = Cookie(default=None)):
+    if not _check_auth(session):
+        return RedirectResponse("/login", status_code=303)
     with db() as conn:
         campaign = conn.execute("SELECT * FROM campaigns WHERE id=?", (cid,)).fetchone()
         if not campaign:

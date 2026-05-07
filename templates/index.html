@@ -235,6 +235,9 @@
     <a href="/sendy">Sendy</a>
   </nav>
   <div class="header-right">
+    <form action="/logout" method="post" style="flex-direction:row">
+      <button type="submit" style="background:none;border:none;font-size:12px;color:#9ca3af;cursor:pointer;padding:4px 8px">Sign out</button>
+    </form>
     {% if warm_day %}
       <span class="tag">Day {{ warm_day }} — Active</span>
     {% else %}

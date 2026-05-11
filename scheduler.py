@@ -1,5 +1,6 @@
 import random
 import logging
+import time
 import datetime
 from datetime import timezone
 from zoneinfo import ZoneInfo
@@ -86,6 +87,7 @@ def run_warm_job():
             sent += 1
         except Exception as e:
             logger.error(f"Warm-up send failed to {to_email}: {e}")
+        time.sleep(0.6)
 
     logger.info(f"Warm-up day {day}: sent {sent}/{to_send}")
 
@@ -121,6 +123,7 @@ def send_now(count: int = 1) -> dict:
             sent += 1
         except Exception as e:
             errors.append(str(e))
+        time.sleep(0.6)
 
     return {"sent": sent, "errors": errors}
 

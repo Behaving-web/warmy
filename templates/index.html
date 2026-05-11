@@ -508,11 +508,13 @@
     const data = await res.json();
     btn.textContent = 'Send now';
     btn.disabled = false;
-    if (data.sent > 0) {
-      alert(`Sent ${data.sent} email${data.sent !== 1 ? 's' : ''}.`);
-      location.reload();
+    if (data.error) {
+      alert(data.error);
     } else {
-      alert(data.error || data.errors?.join('\n') || 'Failed to send.');
+      let msg = `Sent ${data.sent} email${data.sent !== 1 ? 's' : ''}.`;
+      if (data.errors?.length) msg += `\n\nFailed (${data.errors.length}):\n` + data.errors.join('\n');
+      alert(msg);
+      if (data.sent > 0) location.reload();
     }
   });
 </script>
